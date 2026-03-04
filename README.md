@@ -1,1 +1,1 @@
-# stoa.github.io
+# stoa wiki
