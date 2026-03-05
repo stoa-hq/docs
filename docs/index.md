@@ -8,7 +8,7 @@ hero:
   actions:
     - theme: brand
       text: Get Started
-      link: /guide/quick-start
+      link: /wiki/guide/quick-start
     - theme: alt
       text: View on GitHub
       link: https://github.com/stoa-hq/stoa

@@ -4,7 +4,7 @@ Connect AI agents to your Stoa shop.
 
 ## Prerequisites
 
-1. A running Stoa instance (see [Quick Start](/guide/quick-start))
+1. A running Stoa instance (see [Quick Start](/wiki/guide/quick-start))
 2. An API key with the required permissions (for Admin MCP)
 
 ## Create an API Key

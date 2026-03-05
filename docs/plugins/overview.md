@@ -158,4 +158,4 @@ func (a *App) RegisterPlugins() error {
 
 ## Next Steps
 
-- [Payment Integration](/plugins/payment) — integrate a payment service provider
+- [Payment Integration](/wiki/plugins/payment) — integrate a payment service provider

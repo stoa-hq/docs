@@ -150,7 +150,7 @@ make mcp-admin-build    # Build Admin MCP Server binary
 
 ## Next Steps
 
-- [Configuration](/guide/configuration) — customize Stoa for your environment
-- [API Overview](/api/overview) — authentication and endpoints
-- [MCP Setup](/mcp/setup) — connect an AI agent to your shop
-- [Plugin System](/plugins/overview) — extend Stoa with plugins
+- [Configuration](/wiki/guide/configuration) — customize Stoa for your environment
+- [API Overview](/wiki/api/overview) — authentication and endpoints
+- [MCP Setup](/wiki/mcp/setup) — connect an AI agent to your shop
+- [Plugin System](/wiki/plugins/overview) — extend Stoa with plugins
