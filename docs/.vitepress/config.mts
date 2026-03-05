@@ -36,7 +36,7 @@ export default defineConfig({
           items: [
             { text: 'Introduction', link: '/guide/introduction' },
             { text: 'Quick Start', link: '/guide/quick-start' },
-            { text: 'Configuration', link: '//guide/configuration' },
+            { text: 'Configuration', link: '/guide/configuration' },
             { text: 'Self-Hosting', link: '/guide/self-hosting' },
           ]
         },
