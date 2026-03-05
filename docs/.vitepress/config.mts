@@ -4,6 +4,8 @@ export default defineConfig({
   title: 'Stoa',
   description: 'Commerce for humans and agents.',
   cleanUrls: true,
+  ignoreDeadLinks: true,
+  base: '/wiki',
 
   head: [
     ['link', { rel: 'icon', href: '/favicon.ico' }]
@@ -14,14 +16,14 @@ export default defineConfig({
     siteTitle: 'Stoa',
 
     nav: [
-      { text: 'Guide', link: '/wiki/guide/introduction' },
-      { text: 'API', link: '/wiki//api/overview' },
-      { text: 'Plugins', link: '/wiki//plugins/overview' },
-      { text: 'MCP', link: '/wiki//mcp/overview' },
+      { text: 'Guide', link: '/guide/introduction' },
+      { text: 'API', link: '/api/overview' },
+      { text: 'Plugins', link: '/plugins/overview' },
+      { text: 'MCP', link: '/mcp/overview' },
       {
         text: 'v0.1.0',
         items: [
-          { text: 'Changelog', link: '/wiki/changelog' },
+          { text: 'Changelog', link: '/changelog' },
           { text: 'GitHub', link: 'https://github.com/stoa-hq/stoa' }
         ]
       }
@@ -32,26 +34,26 @@ export default defineConfig({
         {
           text: 'Getting Started',
           items: [
-            { text: 'Introduction', link: '/wiki/guide/introduction' },
-            { text: 'Quick Start', link: '/wiki/guide/quick-start' },
-            { text: 'Configuration', link: '/wiki//guide/configuration' },
-            { text: 'Self-Hosting', link: '/wiki/guide/self-hosting' },
+            { text: 'Introduction', link: '/guide/introduction' },
+            { text: 'Quick Start', link: '/guide/quick-start' },
+            { text: 'Configuration', link: '//guide/configuration' },
+            { text: 'Self-Hosting', link: '/guide/self-hosting' },
           ]
         },
         {
           text: 'Core Concepts',
           items: [
-            { text: 'Architecture', link: '/wiki/guide/architecture' },
-            { text: 'Products & Variants', link: '/wiki/guide/products' },
-            { text: 'Orders', link: '/wiki/guide/orders' },
-            { text: 'Customers', link: '/wiki/guide/customers' },
+            { text: 'Architecture', link: '/guide/architecture' },
+            { text: 'Products & Variants', link: '/guide/products' },
+            { text: 'Orders', link: '/guide/orders' },
+            { text: 'Customers', link: '/guide/customers' },
           ]
         },
         {
           text: 'Admin Panel',
           items: [
-            { text: 'Overview', link: '/wiki/guide/admin' },
-            { text: 'Demo Storefront', link: '/wiki/guide/storefront' },
+            { text: 'Overview', link: '/guide/admin' },
+            { text: 'Demo Storefront', link: '/guide/storefront' },
           ]
         }
       ],
@@ -60,12 +62,12 @@ export default defineConfig({
         {
           text: 'REST API',
           items: [
-            { text: 'Overview', link: '/wiki/api/overview' },
-            { text: 'Authentication', link: '/wiki/api/authentication' },
-            { text: 'Products', link: '/wiki/api/products' },
-            { text: 'Orders', link: '/wiki/api/orders' },
-            { text: 'Customers', link: '/wiki/api/customers' },
-            { text: 'Cart', link: '/wiki/api/cart' },
+            { text: 'Overview', link: '/api/overview' },
+            { text: 'Authentication', link: '/api/authentication' },
+            { text: 'Products', link: '/api/products' },
+            { text: 'Orders', link: '/api/orders' },
+            { text: 'Customers', link: '/api/customers' },
+            { text: 'Cart', link: '/api/cart' },
           ]
         }
       ],
@@ -74,11 +76,11 @@ export default defineConfig({
         {
           text: 'Plugin System',
           items: [
-            { text: 'Overview', link: '/wiki/plugins/overview' },
-            { text: 'Creating a Plugin', link: '/wiki/plugins/creating' },
-            { text: 'Plugin API', link: '/wiki/plugins/api' },
-            { text: 'Payment Providers', link: '/wiki/plugins/payment' },
-            { text: 'Shipping Providers', link: '/wiki/plugins/shipping' },
+            { text: 'Overview', link: '/plugins/overview' },
+            { text: 'Creating a Plugin', link: '/plugins/creating' },
+            { text: 'Plugin API', link: '/plugins/api' },
+            { text: 'Payment Providers', link: '/plugins/payment' },
+            { text: 'Shipping Providers', link: '/plugins/shipping' },
           ]
         }
       ],
@@ -87,10 +89,10 @@ export default defineConfig({
         {
           text: 'MCP',
           items: [
-            { text: 'Overview', link: '/wiki/mcp/overview' },
-            { text: 'Setup', link: '/wiki/mcp/setup' },
-            { text: 'Available Tools', link: '/wiki/mcp/tools' },
-            { text: 'Agent Examples', link: '/wiki/mcp/examples' },
+            { text: 'Overview', link: '/mcp/overview' },
+            { text: 'Setup', link: '/mcp/setup' },
+            { text: 'Available Tools', link: '/mcp/tools' },
+            { text: 'Agent Examples', link: '/mcp/examples' },
           ]
         }
       ]

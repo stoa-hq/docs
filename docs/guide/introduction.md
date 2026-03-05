@@ -41,6 +41,6 @@ Stoa ships with a built-in [Model Context Protocol](https://modelcontextprotocol
 
 ## Next Steps
 
-- [Quick Start](/wiki/guide/quick-start) — get Stoa running in 5 minutes
-- [Architecture](/wiki/guide/architecture) — understand how the pieces fit together
-- [MCP Overview](/wiki/mcp/overview) — learn how agents interact with Stoa
+- [Quick Start](/guide/quick-start) — get Stoa running in 5 minutes
+- [Architecture](/guide/architecture) — understand how the pieces fit together
+- [MCP Overview](/mcp/overview) — learn how agents interact with Stoa

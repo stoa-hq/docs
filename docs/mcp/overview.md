@@ -60,4 +60,4 @@ Agent: "Done! I ordered the AirBuds Pro for €49.99. Order #ord_789."
 
 ## Next Steps
 
-- [MCP Setup](/wiki/mcp/setup) — build, run, and connect the MCP servers
+- [MCP Setup](/mcp/setup) — build, run, and connect the MCP servers
