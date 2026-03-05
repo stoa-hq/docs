@@ -4,7 +4,6 @@ export default defineConfig({
   title: 'Stoa',
   description: 'Commerce for humans and agents.',
   cleanUrls: true,
-  ignoreDeadLinks: true,
 
   head: [
     ['link', { rel: 'icon', href: '/favicon.ico' }]
