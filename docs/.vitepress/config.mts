@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: 'StoA Docs',
+  title: 'stoa Docs',
   description: 'Commerce for humans and agents.',
   cleanUrls: true,
   ignoreDeadLinks: true,
@@ -13,7 +13,7 @@ export default defineConfig({
 
   themeConfig: {
     logo: '/logo.svg',
-    siteTitle: 'Stoa',
+    siteTitle: 'stoa docs',
 
     nav: [
       { text: 'Guide', link: '/guide/introduction' },

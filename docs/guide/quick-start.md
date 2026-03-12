@@ -131,11 +131,39 @@ The dev servers communicate with the Go backend on port 8080 via the API. Make s
 
 ---
 
+## Installing the Binary Globally
+
+After building, you can install the `stoa` binary to `~/.local/bin` so you can run it from anywhere without `./bin/stoa`:
+
+```bash
+make install
+```
+
+This builds the full binary (frontends + Go) and copies it to `~/.local/bin/stoa`. Make sure `~/.local/bin` is in your `$PATH`:
+
+```bash
+# Add to ~/.bashrc or ~/.zshrc if not already present
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+You can override the install location:
+
+```bash
+make install INSTALL_DIR=/usr/local/bin
+```
+
+::: tip Linux & macOS only
+`make install` targets Linux and macOS. Windows users should use Docker or build the binary manually with `go build`.
+:::
+
+---
+
 ## Makefile Commands
 
 ```bash
 make build              # Build frontends + compile Go binary
 make run                # build + start
+make install            # Build + install binary to ~/.local/bin
 make test               # Run Go tests
 make test-race          # Tests with race detector
 make lint               # Run linters (golangci-lint + go vet)
