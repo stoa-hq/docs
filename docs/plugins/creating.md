@@ -66,22 +66,17 @@ func (p *Plugin) Init(app *sdk.AppContext) error {
 }
 ```
 
-## 4. Register the plugin
+## 4. Self-register via init()
 
-Add the plugin to `internal/app/app.go`:
+Add an `init()` function that calls `sdk.Register`. Stoa will automatically initialise your plugin on startup — no changes to `app.go` needed:
 
 ```go
-import "github.com/epoxx-arch/stoa/plugins/myplugin"
-
-func (a *App) RegisterPlugins() error {
-    appCtx := &plugin.AppContext{
-        DB:     a.DB.Pool,
-        Router: a.Server.Router(),
-        Logger: a.Logger,
-    }
-    return a.PluginRegistry.Register(myplugin.New(), appCtx)
+func init() {
+    sdk.Register(New())
 }
 ```
+
+When users install your plugin with `stoa plugin install`, the blank import triggers this `init()` and your plugin is active after a restart.
 
 ## 5. Pass configuration (optional)
 
@@ -114,6 +109,7 @@ If an **after-hook** handler returns an error, it is logged but does not abort t
 
 ## Next Steps
 
+- [Installing Plugins](/plugins/installing) — install plugins via CLI
 - [Plugin API](/plugins/api) — full reference for hooks, entities, and HookEvent
 - [Payment Integration](/plugins/payment) — integrate a payment service provider
 - [Shipping Providers](/plugins/shipping) — add custom shipping logic

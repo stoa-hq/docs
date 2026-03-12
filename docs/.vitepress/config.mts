@@ -77,6 +77,7 @@ export default defineConfig({
           text: 'Plugin System',
           items: [
             { text: 'Overview', link: '/plugins/overview' },
+            { text: 'Installing Plugins', link: '/plugins/installing' },
             { text: 'Creating a Plugin', link: '/plugins/creating' },
             { text: 'Plugin API', link: '/plugins/api' },
             { text: 'Payment Providers', link: '/plugins/payment' },

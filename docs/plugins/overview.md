@@ -101,23 +101,36 @@ func (p *Plugin) Init(app *sdk.AppContext) error {
 }
 ```
 
-## Registering a Plugin
+## Installing a Plugin
 
-Add the plugin to `internal/app/app.go`:
+Stoa provides a CLI command to install plugins. Run it from the Stoa source directory:
+
+```bash
+stoa plugin install n8n
+# or with a full import path:
+stoa plugin install github.com/stoa-hq/stoa-plugins/n8n
+```
+
+The command fetches the package, adds it to the auto-generated imports file, and rebuilds the binary. Restart Stoa afterwards to activate the plugin.
+
+```bash
+stoa plugin list    # show installed plugins
+stoa plugin remove n8n  # uninstall
+```
+
+See [Installing Plugins](/plugins/installing) for the full reference.
+
+## Self-registration
+
+Plugins register themselves via `init()` — no changes to `app.go` are needed:
 
 ```go
-import "github.com/epoxx-arch/stoa/plugins/orderemail"
-
-func (a *App) RegisterPlugins() error {
-    appCtx := &plugin.AppContext{
-        DB:     a.DB.Pool,
-        Router: a.Server.Router(),
-        Config: nil,
-        Logger: a.Logger,
-    }
-    return a.PluginRegistry.Register(orderemail.New(), appCtx)
+func init() {
+    sdk.Register(New())
 }
 ```
+
+Stoa automatically initialises every plugin that called `sdk.Register()` on startup.
 
 ## Available Hooks
 
