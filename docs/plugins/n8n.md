@@ -110,40 +110,46 @@ Monetary values follow Stoa's convention: integer cents. `4999` = €49.99.
 
 ## Signature verification
 
-Every request carries a signature header:
+Every request carries two security headers:
 
 ```
 X-Stoa-Signature: sha256=<hmac-sha256(body, secret)>
+X-Stoa-Token: <secret>
 ```
 
-Verify the signature in your n8n **Code node** to ensure requests originate from Stoa:
+### Option A — Header Auth (recommended for n8n)
 
-```javascript
-const crypto = require('crypto');
+Use n8n's built-in **Header Auth** on the Webhook node:
 
-const body = JSON.stringify($input.item.json);
-const receivedSig = $input.item.headers['x-stoa-signature'];
-const expectedSig = 'sha256=' + crypto
-  .createHmac('sha256', 'your-secret')
-  .update(body)
-  .digest('hex');
+1. Webhook-Node → **Authentication: Header Auth**
+2. Create a new credential:
+   - **Name**: `X-Stoa-Token`
+   - **Value**: your secret from `config.yaml`
 
-if (receivedSig !== expectedSig) {
-  throw new Error('Invalid signature — request rejected');
-}
+This is the simplest and most reliable approach. n8n verifies the static token before the workflow executes.
 
-return $input.item;
-```
+### Option B — HMAC signature (Code node)
+
+::: warning Limitation
+n8n parses the JSON body before the Code node runs. Re-serialising with `JSON.stringify` may produce a different byte sequence than Go's `json.Marshal`, causing the signature check to fail. Use Option A instead.
+:::
+
+If you still want to verify `X-Stoa-Signature`, enable **Include Headers** in the Webhook node options and read the header via `$json.headers['x-stoa-signature']` in a Code node.
 
 ## n8n setup
 
 In n8n, add a **Webhook** node for each event you want to handle:
 
 1. **Method**: POST
-2. **Path**: `stoa/order.after_create` (matches `{base_url}/order.after_create`)
-3. **Authentication**: None (use the Code node for HMAC verification instead)
+2. **Path**: `order.after_create` (Stoa posts to `{webhook_base_url}/order.after_create`)
+3. **Authentication**: Header Auth (see above)
 
 One workflow per event type is the recommended approach — it keeps workflows focused and easy to debug.
+
+::: tip Test mode vs. production
+- **Test mode**: Click **"Listen for test event"** in n8n, then immediately trigger the event in Stoa. The listener accepts exactly one request.
+- **Production**: Activate the workflow (toggle top-right → green) and use `/webhook/` instead of `/webhook-test/` in `webhook_base_url`.
+:::
 
 ## Health check
 
