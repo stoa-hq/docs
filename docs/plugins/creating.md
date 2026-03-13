@@ -42,12 +42,13 @@ The `Name()` return value must be unique across all registered plugins.
 
 ```go
 type AppContext struct {
-    DB     *pgxpool.Pool           // PostgreSQL connection pool
-    Router chi.Router              // HTTP router for custom endpoints
-    Hooks  *HookRegistry           // Event system
-    Config map[string]interface{}  // Plugin-specific config from config.yaml
-    Logger zerolog.Logger          // Structured logger
-    Auth   *AuthHelper             // Authentication middleware and context helpers
+    DB          *pgxpool.Pool           // PostgreSQL connection pool
+    Router      chi.Router              // HTTP router for custom endpoints
+    AssetRouter chi.Router              // Mounted at /plugins/{name}/assets/
+    Hooks       *HookRegistry           // Event system
+    Config      map[string]interface{}  // Plugin-specific config from config.yaml
+    Logger      zerolog.Logger          // Structured logger
+    Auth        *AuthHelper             // Authentication middleware and context helpers
 }
 ```
 
@@ -176,5 +177,6 @@ If an **after-hook** handler returns an error, it is logged but does not abort t
 
 - [Installing Plugins](/plugins/installing) — install plugins via CLI
 - [Plugin API](/plugins/api) — full reference for hooks, entities, and HookEvent
+- [UI Extensions](/plugins/ui-extensions) — add custom UI to Admin and Storefront
 - [Payment Integration](/plugins/payment) — integrate a payment service provider
 - [Shipping Providers](/plugins/shipping) — add custom shipping logic

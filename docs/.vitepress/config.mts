@@ -80,6 +80,7 @@ export default defineConfig({
             { text: 'Installing Plugins', link: '/plugins/installing' },
             { text: 'Creating a Plugin', link: '/plugins/creating' },
             { text: 'Plugin API', link: '/plugins/api' },
+            { text: 'UI Extensions', link: '/plugins/ui-extensions' },
             { text: 'Payment Providers', link: '/plugins/payment' },
             { text: 'Shipping Providers', link: '/plugins/shipping' },
             { text: 'n8n Workflows', link: '/plugins/n8n' },
