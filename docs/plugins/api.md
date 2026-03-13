@@ -16,13 +16,50 @@ type Plugin interface {
 
 ```go
 type AppContext struct {
-    DB     *pgxpool.Pool
-    Router chi.Router
-    Hooks  *HookRegistry
-    Config map[string]interface{}
-    Logger zerolog.Logger
+    DB     *pgxpool.Pool           // PostgreSQL connection pool
+    Router chi.Router              // HTTP router for custom endpoints
+    Hooks  *HookRegistry           // Event system
+    Config map[string]interface{}  // Plugin-specific config from config.yaml
+    Logger zerolog.Logger          // Structured logger
+    Auth   *AuthHelper             // Authentication middleware and context helpers
 }
 ```
+
+## AuthHelper
+
+The `Auth` field provides authentication middleware and context helpers so plugins can protect their HTTP endpoints without importing internal Stoa packages:
+
+```go
+type AuthHelper struct {
+    OptionalAuth func(http.Handler) http.Handler  // Extracts auth if present, never blocks
+    Required     func(http.Handler) http.Handler  // Requires valid token, returns 401 otherwise
+    UserID       func(ctx context.Context) uuid.UUID // Authenticated user ID from context
+    UserType     func(ctx context.Context) string    // "admin", "customer", or "api_key"
+}
+```
+
+### Usage
+
+```go
+func (p *Plugin) Init(app *sdk.AppContext) error {
+    app.Router.Route("/api/v1/store/myplugin", func(r chi.Router) {
+        r.Use(app.Auth.Required)  // All routes require authentication
+        r.Post("/action", p.handleAction(app.Auth))
+    })
+    return nil
+}
+
+func (p *Plugin) handleAction(auth *sdk.AuthHelper) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        userID := auth.UserID(r.Context())
+        // Use userID to verify ownership...
+    }
+}
+```
+
+::: tip Use auth for store-facing routes
+The plugin router is the root Chi router — it does **not** inherit the `OptionalAuth` middleware from Stoa's `/api/v1/store/*` group. Always apply `app.Auth.Required` or `app.Auth.OptionalAuth` explicitly to your plugin's store-facing routes.
+:::
 
 ## HookRegistry
 
@@ -152,11 +189,20 @@ type MCPStorePlugin interface {
 }
 ```
 
-`RegisterStoreMCPTools` is called once at Store MCP server startup, after the built-in core tools are registered. The `server` parameter is `*github.com/mark3labs/mcp-go/server.MCPServer` (typed as `any` to avoid import cycles in the SDK). The `client` parameter implements `StoreAPIClient`.
+`RegisterStoreMCPTools` is called once at Store MCP server startup, after the built-in core tools are registered. The `server` parameter satisfies the `AddTool(mcp.Tool, server.ToolHandlerFunc)` method — use an interface assertion (see example below). The `client` parameter implements `StoreAPIClient`.
+
+### Tool name convention
+
+Tool names **must** use the prefix `store_{pluginName}_`. The MCP server enforces this at registration time — tools with incorrect prefixes are rejected and the plugin is skipped.
+
+| Plugin name | Valid tool name |
+|-------------|----------------|
+| `stripe` | `store_stripe_create_payment_intent` |
+| `paypal` | `store_paypal_checkout` |
 
 ### StoreAPIClient
 
-A minimal HTTP client interface for making calls to the Stoa store API:
+A store-scoped HTTP client interface for making calls to the Stoa store API:
 
 ```go
 type StoreAPIClient interface {
@@ -165,7 +211,15 @@ type StoreAPIClient interface {
 }
 ```
 
-Using this interface instead of the concrete `internal/mcp.StoaClient` means plugins do not need to import any internal Stoa packages.
+The client is restricted to `/api/v1/store/*` paths — attempts to access admin or other endpoints return an error. Path traversal (e.g. `/../admin/`) is also blocked.
+
+### Plugin isolation
+
+The MCP server applies two isolation layers to prevent plugins from interfering with built-in tools or other plugins:
+
+1. **Tool name prefix enforcement**: plugins can only register tools named `store_{pluginName}_*`.
+2. **Store-scoped API client**: the `StoreAPIClient` only allows requests to `/api/v1/store/*` paths.
+3. **Panic recovery**: if a plugin panics during registration, the error is logged and the plugin is skipped — the MCP server continues to start.
 
 ### Example
 
@@ -180,25 +234,35 @@ import (
     "github.com/stoa-hq/stoa/pkg/sdk"
 )
 
+// toolAdder is satisfied by both *server.MCPServer and *mcp.ScopedMCPServer.
+type toolAdder interface {
+    AddTool(mcp.Tool, server.ToolHandlerFunc)
+}
+
 // RegisterStoreMCPTools implements sdk.MCPStorePlugin.
 func (p *Plugin) RegisterStoreMCPTools(srv any, client sdk.StoreAPIClient) {
-    s := srv.(*server.MCPServer)
+    s := srv.(toolAdder)
 
-    tool := mcp.NewTool("store_my_action",
+    tool := mcp.NewTool("store_myplugin_action",
         mcp.WithDescription("Does something useful for agents"),
         mcp.WithString("order_id", mcp.Required()),
     )
     s.AddTool(tool, func(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-        data, err := client.Post("/plugins/myplugin/action", map[string]interface{}{
+        data, err := client.Post("/api/v1/store/myplugin/action", map[string]interface{}{
             "order_id": req.GetString("order_id", ""),
         })
         if err != nil {
-            return mcp.NewToolResultError(err.Error()), nil
+            // Return a sanitized error — do not leak internal details to agents.
+            return mcp.NewToolResultError("action failed"), nil
         }
         return mcp.NewToolResultText(string(data)), nil
     })
 }
 ```
+
+::: warning Use interface assertion, not concrete type
+Use `srv.(toolAdder)` instead of `srv.(*server.MCPServer)`. The MCP server passes a scoped wrapper that enforces tool name prefixes. A concrete type assertion would panic.
+:::
 
 ::: tip Plugin installer keeps both binaries in sync
 `stoa plugin install` writes `plugins_generated.go` into both `cmd/stoa/` and `cmd/stoa-store-mcp/`, so your plugin's `init()` runs in the Store MCP server process as well. Both files are gitignored.

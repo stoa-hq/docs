@@ -42,11 +42,12 @@ The `Name()` return value must be unique across all registered plugins.
 
 ```go
 type AppContext struct {
-    DB     *pgxpool.Pool    // PostgreSQL connection pool
-    Router chi.Router       // HTTP router for custom endpoints
-    Hooks  *HookRegistry    // Event system
-    Config map[string]interface{} // Plugin-specific config from config.yaml
-    Logger zerolog.Logger   // Structured logger
+    DB     *pgxpool.Pool           // PostgreSQL connection pool
+    Router chi.Router              // HTTP router for custom endpoints
+    Hooks  *HookRegistry           // Event system
+    Config map[string]interface{}  // Plugin-specific config from config.yaml
+    Logger zerolog.Logger          // Structured logger
+    Auth   *AuthHelper             // Authentication middleware and context helpers
 }
 ```
 
@@ -61,10 +62,19 @@ type Plugin struct {
 func (p *Plugin) Init(app *sdk.AppContext) error {
     p.db = app.DB
     p.logger = app.Logger
-    // ...
+
+    // Protect store-facing routes with authentication.
+    app.Router.Route("/api/v1/store/myplugin", func(r chi.Router) {
+        r.Use(app.Auth.Required)
+        r.Post("/action", p.handleAction(app.Auth))
+    })
     return nil
 }
 ```
+
+::: tip Always apply auth middleware
+The plugin router is the root Chi router — it does **not** inherit Stoa's store middleware. Use `app.Auth.Required` or `app.Auth.OptionalAuth` on your store-facing routes.
+:::
 
 ## 4. Self-register via init()
 
@@ -116,12 +126,17 @@ import (
     "github.com/stoa-hq/stoa/pkg/sdk"
 )
 
+// toolAdder is satisfied by both *server.MCPServer and the scoped wrapper.
+type toolAdder interface {
+    AddTool(mcp.Tool, server.ToolHandlerFunc)
+}
+
 // RegisterStoreMCPTools implements sdk.MCPStorePlugin.
 // Called once at Store MCP server startup after core tools are registered.
 func (p *Plugin) RegisterStoreMCPTools(srv any, client sdk.StoreAPIClient) {
-    s := srv.(*server.MCPServer)
+    s := srv.(toolAdder)
 
-    tool := mcp.NewTool("store_my_plugin_action",
+    tool := mcp.NewTool("store_myplugin_action",
         mcp.WithDescription("Describe what the agent can do with this tool"),
         mcp.WithString("order_id",
             mcp.Description("UUID of the order"),
@@ -129,21 +144,26 @@ func (p *Plugin) RegisterStoreMCPTools(srv any, client sdk.StoreAPIClient) {
         ),
     )
     s.AddTool(tool, func(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-        data, err := client.Post("/plugins/myplugin/action", map[string]interface{}{
+        data, err := client.Post("/api/v1/store/myplugin/action", map[string]interface{}{
             "order_id": req.GetString("order_id", ""),
         })
         if err != nil {
-            return mcp.NewToolResultError(err.Error()), nil
+            return mcp.NewToolResultError("action failed"), nil
         }
         return mcp.NewToolResultText(string(data)), nil
     })
 }
 ```
 
-The `client` parameter (`sdk.StoreAPIClient`) makes authenticated HTTP requests to the Stoa API — the same server your plugin registered routes on in `Init`. No internal packages need to be imported.
+Key conventions:
+
+- **Tool names** must use the prefix `store_{pluginName}_` (e.g. `store_myplugin_action`). The MCP server enforces this.
+- **Interface assertion**: use `srv.(toolAdder)` — not `srv.(*server.MCPServer)`. The server passes a scoped wrapper.
+- **Store-scoped client**: the `client` only allows requests to `/api/v1/store/*` paths.
+- **Sanitize errors**: return generic messages to MCP consumers — do not leak internal details via `err.Error()`.
 
 ::: info No changes to the MCP server binary needed
-The Store MCP binary discovers `MCPStorePlugin` implementations automatically at startup. Installing your plugin with `stoa plugin install` is enough.
+The Store MCP binary discovers `MCPStorePlugin` implementations automatically at startup. Installing your plugin with `stoa plugin install` is enough. If a plugin panics during registration, it is skipped and the server continues to start.
 :::
 
 ## Error handling

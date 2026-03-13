@@ -81,6 +81,10 @@ POST /api/v1/store/stripe/payment-intent
 
 Creates a Stripe PaymentIntent for a pending order. Call this after `store_checkout` to initiate payment.
 
+::: warning Authentication required
+This endpoint requires a valid Bearer token or API key. The authenticated user must be the owner of the order (`customer_id` must match). Requests without authentication receive `401 Unauthorized`, requests for orders belonging to other customers receive `404 Not Found`.
+:::
+
 **Request body:**
 ```json
 {
@@ -245,9 +249,27 @@ curl -X POST /api/v1/admin/payment-methods \
 
 The returned `id` is the `payment_method_id` used in checkout and PaymentIntent creation.
 
+## Security
+
+### Authentication and authorization
+
+The `POST /api/v1/store/stripe/payment-intent` endpoint requires authentication. The plugin verifies that the authenticated customer owns the order before creating a PaymentIntent. This prevents IDOR attacks where a malicious user could initiate payment for another customer's order.
+
+### Webhook idempotency
+
+Stripe may deliver webhook events more than once (retries on network errors, timeouts, or 5xx responses). The plugin uses a `UNIQUE` constraint on the `provider_reference` column in `payment_transactions` to guarantee idempotency. Duplicate events are detected and skipped automatically — no duplicate transaction records are created.
+
+### Webhook signature verification
+
+All webhook requests are verified using HMAC-SHA256 with the `webhook_secret` before any processing occurs. The raw request body is used for verification (not re-serialized JSON), which is required for correct signature matching.
+
 ## Error behaviour
 
+- **Unauthenticated request**: returns `401 Unauthorized`.
+- **Order not owned by user**: returns `404 Not Found` (does not reveal existence).
+- **Non-positive order total**: returns `422 Unprocessable Entity`.
 - **Signature verification failure**: returns `401 Unauthorized`. Stripe will retry the webhook.
+- **Duplicate webhook event**: logged as info, returns `204` (acknowledged). No duplicate records created.
 - **Missing order metadata**: logged as error, webhook returns `204` (acknowledged). Stripe will not retry.
 - **DB errors** (transaction insert, status update): logged as error, webhook returns `204`. Monitor logs for failures.
 - **Stripe API errors** (creating PaymentIntent): returns `502 Bad Gateway` to the client.
