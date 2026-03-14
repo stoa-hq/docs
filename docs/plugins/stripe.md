@@ -81,22 +81,27 @@ POST /api/v1/store/stripe/payment-intent
 
 Creates a Stripe PaymentIntent for a pending order. Call this after `store_checkout` to initiate payment.
 
-::: warning Authentication required
-This endpoint requires a valid Bearer token or API key. The authenticated user must be the owner of the order (`customer_id` must match). Requests without authentication receive `401 Unauthorized`, requests for orders belonging to other customers receive `404 Not Found`.
-:::
+This endpoint supports both authenticated and guest checkout:
+
+- **Authenticated users**: Bearer token required. The plugin verifies that `customer_id` matches the authenticated user.
+- **Guest checkout**: No token needed. Pass the `guest_token` returned by the checkout endpoint to prove ownership of the guest order.
+
+Requests for orders belonging to other customers or with an invalid guest token receive `404 Not Found`.
 
 **Request body:**
 ```json
 {
   "order_id": "018e1b2c-...",
-  "payment_method_id": "018e1b2c-..."
+  "payment_method_id": "018e1b2c-...",
+  "guest_token": "a1b2c3d4-..."
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `order_id` | UUID | ID of the pending order (from `store_checkout`) |
-| `payment_method_id` | UUID | ID of the Stoa PaymentMethod with `provider = "stripe"` |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `order_id` | UUID | Yes | ID of the pending order (from `store_checkout`) |
+| `payment_method_id` | UUID | Yes | ID of the Stoa PaymentMethod with `provider = "stripe"` |
+| `guest_token` | UUID | Guest only | Token returned by checkout for guest orders |
 
 **Response (`201 Created`):**
 ```json
@@ -130,6 +135,8 @@ Receives signed Stripe webhook events. All requests are verified with HMAC-SHA25
 ```
 GET /plugins/stripe/health
 ```
+
+Requires authentication. Returns the plugin status and the publishable key.
 
 **Response (`200 OK`):**
 ```json
@@ -165,6 +172,91 @@ Creates a Stripe PaymentIntent for a pending order. Returns the `client_secret` 
   "currency": "eur"
 }
 ```
+
+## Storefront Integration
+
+The Stripe plugin ships a built-in Web Component (`stoa-stripe-checkout`) that renders the Stripe Payment Element directly in the Storefront checkout. No custom frontend code required — the plugin handles everything via the [UI Extension System](/plugins/ui-extensions).
+
+### Checkout flow
+
+The Storefront checkout uses a two-step payment flow when Stripe is installed:
+
+```
+1. Customer fills in address, selects shipping & payment method
+2. Customer clicks "Place Order"
+   → Order is created with status: pending
+   → For guest checkout: a guest_token is returned
+3. Stripe component appears automatically
+   → Creates a PaymentIntent via backend API (with guest_token for guests)
+   → Renders Stripe Payment Element (card, SEPA, etc.)
+4. Customer enters card details and clicks "Pay"
+   → Stripe.js confirms the payment
+5. On success → Redirect to order confirmation page
+   On failure → Error message, customer can retry
+```
+
+Both registered customers and guest users can complete the checkout. Guest orders are tied to a one-time `guest_token` that is only valid for the specific order.
+
+::: tip Automatic payment methods
+The plugin uses Stripe's [Automatic Payment Methods](https://stripe.com/docs/payments/payment-methods/integration-options#using-automatic-payment-methods), which means all payment methods enabled in your Stripe Dashboard (cards, SEPA, Klarna, etc.) are automatically available — no extra configuration needed.
+:::
+
+### Context data
+
+The checkout page passes the following context to the Stripe component:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `orderId` | string (UUID) | ID of the pending order |
+| `orderNumber` | string | Human-readable order number |
+| `paymentMethodId` | string (UUID) | Selected Stoa PaymentMethod ID |
+| `amount` | number | Total in cents |
+| `currency` | string | ISO 4217 currency code |
+| `guestToken` | string (UUID) | Guest order ownership token (empty for authenticated users) |
+
+### Plugin events
+
+The component dispatches `plugin-event` CustomEvents:
+
+| Event type | When | Detail |
+|------------|------|--------|
+| `payment-success` | Payment confirmed | `{ paymentIntentId: "pi_..." }` |
+| `payment-error` | Payment failed | `{ message: "Card declined" }` |
+
+### 3D Secure
+
+For payment methods requiring 3D Secure authentication, Stripe.js handles the redirect automatically. The `return_url` is set to `/checkout/success?order={orderNumber}`. After authentication, the customer is redirected back and the webhook confirms the payment.
+
+### UI Extension declaration
+
+The plugin registers itself for the `storefront:checkout:payment` slot:
+
+```go
+func (p *Plugin) UIExtensions() []sdk.UIExtension {
+    return []sdk.UIExtension{
+        {
+            ID:   "stripe_checkout",
+            Slot: "storefront:checkout:payment",
+            Type: "component",
+            Component: &sdk.UIComponent{
+                TagName:         "stoa-stripe-checkout",
+                ScriptURL:       "/plugins/stripe/assets/checkout.js",
+                Integrity:       sriHash("frontend/dist/checkout.js"),
+                ExternalScripts: []string{
+                    "https://js.stripe.com/v3/",
+                    "https://api.stripe.com",
+                },
+            },
+        },
+    }
+}
+```
+
+The `ExternalScripts` entries are added to `script-src`, `frame-src`, and `connect-src` in the Content-Security-Policy header. Stripe requires all three: `js.stripe.com` for loading Stripe.js and rendering the Payment Element iframe, and `api.stripe.com` for API calls.
+
+::: info Light DOM rendering
+The Stripe component renders in the Light DOM (not Shadow DOM) because Stripe's Payment Element requires direct DOM access for its iframes. CSS isolation is achieved via scoped class prefixes (`.stoa-stripe-checkout`). Card data is secured by Stripe's cross-origin iframe — it never touches the host page's DOM.
+:::
 
 ## Agentic checkout flow
 
@@ -253,7 +345,10 @@ The returned `id` is the `payment_method_id` used in checkout and PaymentIntent 
 
 ### Authentication and authorization
 
-The `POST /api/v1/store/stripe/payment-intent` endpoint requires authentication. The plugin verifies that the authenticated customer owns the order before creating a PaymentIntent. This prevents IDOR attacks where a malicious user could initiate payment for another customer's order.
+The `POST /api/v1/store/stripe/payment-intent` endpoint supports both authenticated and guest checkout:
+
+- **Authenticated customers**: The plugin verifies that the order's `customer_id` matches the authenticated user. This prevents IDOR attacks where a malicious user could initiate payment for another customer's order.
+- **Guest checkout**: The plugin verifies the `guest_token` from the request body against the token stored in the orders table. Each guest order receives a unique token at checkout time. Without this token, a guest cannot access any order — even other guest orders.
 
 ### Webhook idempotency
 
@@ -265,8 +360,8 @@ All webhook requests are verified using HMAC-SHA256 with the `webhook_secret` be
 
 ## Error behaviour
 
-- **Unauthenticated request**: returns `401 Unauthorized`.
-- **Order not owned by user**: returns `404 Not Found` (does not reveal existence).
+- **Guest without token**: returns `401 Unauthorized`.
+- **Order not owned by user / invalid guest token**: returns `404 Not Found` (does not reveal existence).
 - **Non-positive order total**: returns `422 Unprocessable Entity`.
 - **Signature verification failure**: returns `401 Unauthorized`. Stripe will retry the webhook.
 - **Duplicate webhook event**: logged as info, returns `204` (acknowledged). No duplicate records created.
@@ -284,12 +379,123 @@ Monitor failures via Stoa application logs:
 
 ## Local development
 
-Use the [Stripe CLI](https://stripe.com/docs/stripe-cli) to forward webhook events to your local Stoa instance:
+Stripe kann `localhost` nicht direkt erreichen. Verwende die [Stripe CLI](https://stripe.com/docs/stripe-cli), um Webhook-Events an deine lokale Stoa-Instanz weiterzuleiten.
+
+### Stripe CLI installieren
+
+::: code-group
+
+```bash [Linux]
+# Debian / Ubuntu
+curl -s https://packages.stripe.dev/api/security/keypair/stripe-cli-gpg/public | \
+  gpg --dearmor | sudo tee /usr/share/keyrings/stripe.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main" | \
+  sudo tee /etc/apt/sources.list.d/stripe.list
+sudo apt update && sudo apt install stripe
+
+# Arch
+yay -S stripe-cli
+```
+
+```bash [macOS]
+brew install stripe/stripe-cli/stripe
+```
+
+```bash [Windows]
+scoop install stripe
+```
+
+:::
+
+### Test-API-Keys abrufen
+
+Nach dem Login findest du deine Sandbox-Keys im [Stripe Dashboard → API Keys](https://dashboard.stripe.com/test/apikeys) (stelle sicher, dass der **Test mode**-Toggle aktiv ist):
+
+- **Publishable key** (`pk_test_...`) — direkt sichtbar
+- **Secret key** (`sk_test_...`) — klicke auf "Reveal test key"
+
+Oder direkt per CLI:
 
 ```bash
+stripe config --list
+```
+
+### Anmelden und Webhooks weiterleiten
+
+```bash
+# 1. Bei Stripe anmelden (öffnet den Browser)
+stripe login
+
+# 2. Webhooks an lokale Stoa-Instanz weiterleiten
 stripe listen --forward-to http://localhost:8080/plugins/stripe/webhook
 ```
 
-The CLI prints a test webhook secret (`whsec_...`) — use this as `webhook_secret` in `config.yaml` during development.
+Die CLI gibt ein temporäres Webhook-Signing-Secret aus:
 
-For test card numbers, see the [Stripe testing documentation](https://stripe.com/docs/testing).
+```
+> Ready! Your webhook signing secret is whsec_1234abc... (^C to quit)
+```
+
+Trage dieses Secret in deine `config.yaml` ein:
+
+```yaml
+plugins:
+  stripe:
+    secret_key:      "sk_test_..."
+    publishable_key: "pk_test_..."
+    webhook_secret:  "whsec_1234abc..."   # ← von stripe listen
+    currency:        "EUR"
+```
+
+::: warning Neues Secret bei jedem Start
+`stripe listen` generiert bei jedem Aufruf ein neues `whsec_...`-Secret. Aktualisiere deine `config.yaml` entsprechend oder verwende einen festen Webhook-Endpoint im Stripe Dashboard (siehe unten).
+:::
+
+### Test-Events manuell auslösen
+
+Während `stripe listen` läuft, kannst du in einem zweiten Terminal Events triggern:
+
+```bash
+# Erfolgreiche Zahlung simulieren
+stripe trigger payment_intent.succeeded
+
+# Fehlgeschlagene Zahlung simulieren
+stripe trigger payment_intent.payment_failed
+
+# Alle verfügbaren Events anzeigen
+stripe trigger --list
+```
+
+### Alternative: Tunnel-Tools
+
+Wenn du einen permanenten Webhook-Endpoint bevorzugst (z.B. für Team-Entwicklung), kannst du einen Tunnel verwenden:
+
+```bash
+# ngrok
+ngrok http 8080
+
+# cloudflared
+cloudflared tunnel --url http://localhost:8080
+```
+
+Trage die generierte URL im [Stripe Dashboard → Webhooks](https://dashboard.stripe.com/webhooks) ein:
+
+```
+https://<tunnel-id>.ngrok.io/plugins/stripe/webhook
+```
+
+::: tip Stripe CLI ist einfacher
+Für die lokale Einzelentwicklung ist die Stripe CLI der schnellste Weg — kein Dashboard-Eintrag nötig, Events können manuell getriggert werden, und das Signing-Secret wird automatisch bereitgestellt.
+:::
+
+### Testkarten
+
+Verwende diese Kartennummern im Testmodus:
+
+| Nummer | Verhalten |
+|--------|-----------|
+| `4242 4242 4242 4242` | Zahlung erfolgreich |
+| `4000 0000 0000 3220` | 3D Secure erforderlich |
+| `4000 0000 0000 9995` | Zahlung abgelehnt |
+
+Beliebiges Ablaufdatum in der Zukunft und beliebige CVC. Weitere Testkarten in der [Stripe Testing-Dokumentation](https://stripe.com/docs/testing).

@@ -96,6 +96,10 @@ The web component receives two properties:
 
 Dispatch `plugin-event` CustomEvents to communicate back to the host page.
 
+::: tip Real-world example
+The [Stripe plugin](/plugins/stripe#storefront-integration) uses a Web Component to render Stripe Payment Elements in the checkout. See its `frontend/dist/checkout.js` for a complete implementation.
+:::
+
 ## Serving Assets
 
 Plugin assets are served from Go-embedded files. In `Init()`, mount the file server on the provided `AssetRouter`:
@@ -160,10 +164,10 @@ Extensions are validated at startup. Invalid extensions are skipped with a warni
 
 ## Security
 
-- **Shadow DOM** — Web Components render in a closed shadow root
+- **Light DOM with scoped CSS** — Web Components render in the Light DOM for maximum compatibility (e.g. Stripe Payment Element requires direct DOM access). CSS isolation is achieved via scoped class prefixes (`.stoa-{pluginName}-{component}`)
 - **SRI** — Scripts are verified via `integrity` hash
-- **Scoped API Client** — plugins can only call `/api/v1/store/*` and `/plugins/*`
-- **Dynamic CSP** — external scripts from `ExternalScripts` are added to the Content-Security-Policy header
+- **Scoped API Client** — plugins can only call `/api/v1/store/*`, `/api/v1/admin/*`, and `/plugins/*`
+- **Dynamic CSP** — external scripts from `ExternalScripts` are added to `script-src`, `frame-src`, and `connect-src` in the Content-Security-Policy header
 - **Go-embedded assets** — no user-uploaded scripts, assets are compiled into the binary
 
 ## Frontend Integration
