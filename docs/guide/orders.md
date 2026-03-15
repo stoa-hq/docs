@@ -61,6 +61,40 @@ Each `OrderItem` is a snapshot of what was purchased at the time of the order. P
 
 `customer_id` is nullable. Orders from non-registered customers have no customer link — billing and shipping addresses are stored directly on the order.
 
+### Guest Session ID
+
+Every guest order receives a unique `guest_token` (UUID) at checkout. This token serves two purposes:
+
+1. **Ownership verification** — the storefront uses it to let guests view their order and complete payment without an account.
+2. **Payment reconciliation** — admins can use the token to match orders to payment provider sessions (e.g. Stripe Payment Intents).
+
+The guest token is displayed in the Admin Panel on the order detail page, inside the **Payment Transactions** card. Admins can copy it with one click and search for it in the payment provider's dashboard.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `guest_token` | string? | UUID assigned at checkout, only present for guest orders |
+
+::: tip
+When refunding a guest order via Stripe, use the guest session ID to locate the corresponding Payment Intent in the Stripe Dashboard.
+:::
+
+## Payment Transactions
+
+Payment transactions are recorded per order and track the lifecycle of each payment attempt. They are created by payment plugins (e.g. Stripe) via webhooks.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Transaction identifier |
+| `order_id` | UUID | Associated order |
+| `payment_method_id` | UUID | Which payment method was used |
+| `status` | string | `pending`, `completed`, `succeeded`, `failed`, `refunded`, `cancelled` |
+| `currency` | string | ISO 4217 code |
+| `amount` | int | Amount in cents |
+| `provider_reference` | string | External provider reference (e.g. Stripe PaymentIntent ID) |
+| `created_at` | datetime | When the transaction was recorded |
+
+Transactions are visible in the Admin Panel under each order's detail page. The endpoint is read-only — transactions are created by plugins, not manually.
+
 ## Updating Order Status
 
 Via the Admin API:
