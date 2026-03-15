@@ -95,6 +95,35 @@ Payment transactions are recorded per order and track the lifecycle of each paym
 
 Transactions are visible in the Admin Panel under each order's detail page. The endpoint is read-only — transactions are created by plugins, not manually.
 
+## Payment Validation at Checkout
+
+The checkout endpoint validates payment method selection based on your shop's configuration:
+
+- **No active payment methods configured** — checkout works without `payment_method_id` (invoice-only shops).
+- **Active payment methods exist** — `payment_method_id` is required and must reference a valid, active method.
+
+This follows a **synchronous validation, asynchronous payment** model: the order is created as `pending`, and actual payment processing happens afterwards via plugin flows (e.g. Stripe Payment Intents → webhooks → `confirmed`).
+
+| Scenario | Result |
+|----------|--------|
+| No active payment methods, no `payment_method_id` | 201 Created |
+| Active methods exist, no `payment_method_id` | 422 `payment_method_required` |
+| Active methods exist, invalid/inactive `payment_method_id` | 422 `invalid_payment_method` |
+| Active methods exist, valid `payment_method_id` | 201 Created |
+
+### Checkout Hooks
+
+Plugins can intercept the checkout flow via hooks:
+
+| Hook | Timing | Behavior |
+|------|--------|----------|
+| `checkout.before` | Before order creation | Can reject checkout (returns 422 `checkout_rejected`) |
+| `checkout.after` | After order creation | Non-fatal — errors are logged but the order is preserved |
+
+::: tip
+Payment plugins like Stripe use `checkout.after` to create Payment Intents linked to the new order ID.
+:::
+
 ## Updating Order Status
 
 Via the Admin API:

@@ -120,6 +120,42 @@ Transactions are created by payment plugins (e.g. Stripe) via webhooks — they 
 POST /api/v1/store/checkout
 ```
 
-Creates a new order from the current cart. See the [Cart API](/api/cart) for building a cart before checkout.
+Creates a new order. For guest checkouts, the response includes a `guest_token` that the storefront uses for payment completion and order lookup.
 
-For guest checkouts, the response includes a `guest_token` that the storefront uses for payment completion and order lookup.
+**Request Body:**
+
+```json
+{
+  "currency": "EUR",
+  "billing_address": { "city": "Berlin", "street": "..." },
+  "shipping_address": { "city": "Berlin", "street": "..." },
+  "payment_method_id": "uuid",
+  "shipping_method_id": "uuid",
+  "notes": "Ring the doorbell twice",
+  "items": [
+    {
+      "product_id": "uuid",
+      "sku": "SHIRT-RED-M",
+      "name": "Red T-Shirt (M)",
+      "quantity": 2,
+      "unit_price_net": 1680,
+      "unit_price_gross": 1999,
+      "tax_rate": 1900
+    }
+  ]
+}
+```
+
+**Payment Validation:**
+
+If active payment methods are configured in the shop, `payment_method_id` is required and must reference an active method. If no payment methods are configured (invoice-only shops), the field is optional.
+
+| Error Code | Status | Description |
+|------------|--------|-------------|
+| `payment_method_required` | 422 | Active payment methods exist but none was selected |
+| `invalid_payment_method` | 422 | The selected payment method is inactive or does not exist |
+| `checkout_rejected` | 422 | A plugin hook rejected the checkout |
+
+**Checkout Hooks:**
+
+Plugins can register `checkout.before` hooks to validate or reject checkouts, and `checkout.after` hooks to perform post-order actions (e.g. creating payment intents). See [Orders Guide](/guide/orders#checkout-hooks) for details.
