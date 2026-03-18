@@ -56,6 +56,12 @@ export default defineConfig({
             { text: 'Overview', link: '/guide/admin' },
             { text: 'Demo Storefront', link: '/guide/storefront' },
           ]
+        },
+        {
+          text: 'Security',
+          items: [
+            { text: 'Overview', link: '/guide/security' },
+          ]
         }
       ],
 

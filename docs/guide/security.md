@@ -1,0 +1,109 @@
+# Security
+
+Stoa ships with security defaults that protect both the Admin Panel and the Storefront against common web vulnerabilities.
+
+## Content Security Policy (CSP)
+
+Stoa enforces a **nonce-based Content Security Policy** on every HTML page response. This prevents cross-site scripting (XSS) by ensuring only explicitly trusted scripts can execute.
+
+### How it works
+
+Each time the Admin Panel or Storefront serves `index.html`, Stoa:
+
+1. Generates a cryptographically random **128-bit nonce** (base64-encoded)
+2. Injects the nonce into the `Content-Security-Policy` response header
+3. Adds a `nonce` attribute to every `<script>` tag in the HTML
+
+The resulting CSP header looks like:
+
+```
+Content-Security-Policy:
+  default-src 'self';
+  script-src 'self' 'nonce-<random>' 'strict-dynamic';
+  style-src 'self' 'unsafe-inline'
+```
+
+### `'strict-dynamic'`
+
+The `'strict-dynamic'` directive means that any script loaded by a nonced (trusted) script automatically inherits trust. This is critical for the plugin system — plugins load Web Components and external scripts (e.g. Stripe's `js.stripe.com/v3/`) dynamically via `document.createElement('script')`, and `'strict-dynamic'` ensures these work without maintaining an explicit allowlist in `script-src`.
+
+::: tip Plugin compatibility
+Plugin developers do not need to do anything special for CSP. Scripts loaded dynamically from a trusted (nonced) bootstrap script inherit trust automatically via `'strict-dynamic'`.
+:::
+
+### Plugin external scripts
+
+Plugins that declare `ExternalScripts` in their UI extensions still have their domains added to `script-src`, `frame-src`, and `connect-src` as a **CSP Level 2 fallback** for older browsers that don't support `'strict-dynamic'`.
+
+### What stays `'unsafe-inline'`
+
+`style-src` retains `'unsafe-inline'` because:
+
+- Many CSS-in-JS patterns and framework-generated inline styles require it
+- Inline styles do not pose the same XSS risk as inline scripts
+- Noncing every `<style>` tag would add complexity without meaningful security gain
+
+### API routes
+
+API routes (`/api/v1/*`) use a separate, stricter CSP (`default-src 'self'`) since they return JSON, not HTML.
+
+## File Upload Validation
+
+Stoa validates uploaded files server-side using **magic byte detection**, preventing attackers from bypassing restrictions by spoofing the `Content-Type` header.
+
+### How it works
+
+When a file is uploaded via `POST /api/v1/admin/media`:
+
+1. The first 512 bytes of the file are read
+2. Go's [`http.DetectContentType`](https://pkg.go.dev/net/http#DetectContentType) inspects the magic bytes to determine the actual MIME type
+3. The detected type is checked against an **allowlist** of permitted MIME types
+4. If the type is not allowed, the request is rejected with `415 Unsupported Media Type`
+
+The client-provided `Content-Type` header is **ignored** for type determination — the server always trusts the file content over the header.
+
+### Allowed MIME types
+
+| MIME Type | Description |
+|-----------|-------------|
+| `image/jpeg` | JPEG images |
+| `image/png` | PNG images |
+| `image/gif` | GIF images |
+| `image/webp` | WebP images |
+| `image/svg+xml` | SVG vector graphics |
+| `application/pdf` | PDF documents |
+
+::: tip Extending the allowlist
+To allow additional file types, add entries to the `allowedMIMETypes` map in `internal/domain/media/handler.go`.
+:::
+
+### SVG handling
+
+SVGs are detected by `http.DetectContentType` as `text/xml` or `text/plain` since they are XML-based text files. Stoa applies a special fallback: if the client header declares `image/svg+xml` and the detected type is `text/xml` or `text/plain`, the file is accepted as SVG.
+
+### Error response
+
+Rejected uploads return:
+
+```json
+{
+  "errors": [
+    {
+      "code": "unsupported_media_type",
+      "detail": "file type not allowed"
+    }
+  ]
+}
+```
+
+## Authentication
+
+See [Authentication](/api/authentication) for details on JWT access/refresh tokens, RBAC roles, and CSRF protection.
+
+## CSRF Protection
+
+Stoa uses the **Double Submit Cookie** pattern. State-changing requests (`POST`, `PUT`, `PATCH`, `DELETE`) must include an `X-CSRF-Token` header matching the `csrf_token` cookie value. Requests with a `Bearer` token in the `Authorization` header are exempt.
+
+## Password Hashing
+
+All passwords are hashed with **Argon2id**, the recommended algorithm for password storage per OWASP guidelines.
