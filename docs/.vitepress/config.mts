@@ -70,6 +70,7 @@ export default defineConfig({
             { text: 'Customers', link: '/api/customers' },
             { text: 'Cart', link: '/api/cart' },
             { text: 'Warehouses', link: '/api/warehouses' },
+            { text: 'Error Handling', link: '/api/error-handling' },
           ]
         }
       ],
