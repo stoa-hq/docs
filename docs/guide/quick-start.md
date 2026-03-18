@@ -52,6 +52,10 @@ docker compose exec stoa ./stoa seed --demo
 
 Log into the admin panel with the credentials from step 4.
 
+::: warning Production Deployment
+This guide is for local development. For production deployments, Stoa must run behind a reverse proxy (nginx, Caddy) with TLS. See [Self-Hosting Guide](/guide/self-hosting).
+:::
+
 ### Stopping and restarting
 
 ```bash

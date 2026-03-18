@@ -24,7 +24,35 @@ STOA_SERVER_PORT=8080
 | `media.storage` | `local` | Media storage (`local` or `s3`) |
 | `media.local_path` | `./uploads` | Local upload path |
 | `i18n.default_locale` | `de-DE` | Default language |
+| `server.max_body_size` | `1048576` (1 MB) | Max request body size for JSON endpoints (bytes) |
+| `server.max_upload_size` | `36700160` (35 MB) | Max request body size for multipart/file uploads (bytes) |
 | `payment.encryption_key` | *(required)* | AES-256 key for payment config encryption (32 bytes or 64 hex chars) |
+
+## Request Body Limits
+
+Stoa limits incoming request body sizes to prevent memory exhaustion from oversized payloads. Two tiers are applied automatically based on `Content-Type`:
+
+- **JSON / default** — `server.max_body_size` (default: 1 MB). Applied to all `POST`, `PUT`, `PATCH`, and `DELETE` requests that are not multipart.
+- **Multipart / uploads** — `server.max_upload_size` (default: 35 MB). Applied when `Content-Type` starts with `multipart/form-data`.
+
+`GET`, `HEAD`, and `OPTIONS` requests are not affected.
+
+Requests exceeding the limit receive a `413 Request Entity Too Large` response with error code `body_too_large`. HTTP request headers are additionally capped at 1 MB via `MaxHeaderBytes`.
+
+Override via environment variables:
+
+```bash
+STOA_SERVER_MAX_BODY_SIZE=2097152    # 2 MB
+STOA_SERVER_MAX_UPLOAD_SIZE=52428800 # 50 MB
+```
+
+Or in `config.yaml`:
+
+```yaml
+server:
+  max_body_size: 2097152
+  max_upload_size: 52428800
+```
 
 ## Payment Encryption Key
 

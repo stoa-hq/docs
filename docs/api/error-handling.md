@@ -99,6 +99,21 @@ Invalid request bodies return a generic message without leaking parser internals
 }
 ```
 
+### 413 Request Entity Too Large
+
+Returned when the request body exceeds the configured size limit (`server.max_body_size` for JSON, `server.max_upload_size` for multipart). See [Configuration — Request Body Limits](/guide/configuration#request-body-limits).
+
+```json
+{
+  "errors": [
+    {
+      "code": "body_too_large",
+      "detail": "request body exceeds size limit"
+    }
+  ]
+}
+```
+
 ### 404 Not Found
 
 ```json
