@@ -95,7 +95,7 @@ Use a unique prefix per environment (e.g. `stoa_dev`, `stoa_prod`) if multiple S
 
 ### Trigger Full Reindex
 
-Re-indexes all active products and categories. Useful after bulk imports or schema changes.
+Re-indexes all products and categories (including inactive ones). Useful after bulk imports or schema changes. The storefront filters by `active = true` at query time, so inactive entities won't appear in customer-facing search results.
 
 ```
 POST /api/v1/admin/meilisearch/reindex
@@ -113,7 +113,7 @@ Authorization: Bearer <admin-token>
 }
 ```
 
-The reindex runs asynchronously in the background. Progress is logged to the server console.
+The reindex runs in a background goroutine but waits for each Meilisearch task to complete before proceeding to the next batch. Progress is logged to the server console — look for `"products indexed" count=N` and `"categories indexed" count=N`.
 
 ## Docker Compose
 
@@ -184,5 +184,6 @@ Removing the plugin does not delete data from Meilisearch. To clean up, either d
 |-------|----------|
 | `missing config section "meilisearch"` | Add the `meilisearch` block under `plugins:` in config.yaml |
 | `connection refused` in logs | Verify that Meilisearch is running and reachable at the configured `host` |
-| Search returns empty results | Trigger a manual reindex via the admin API |
+| Search returns empty results | Trigger a manual reindex via the admin API. Check logs for `"0 products found"` — this means no products with translations exist in the database |
 | Stale results after product update | Check that the hook handlers are running (look for sync logs) |
+| Reindex reports success but index empty | Ensure products have at least one translation row (`product_translations`). Entities without translations are skipped because of the JOIN |
