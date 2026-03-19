@@ -77,6 +77,33 @@ func (p *Plugin) Init(app *sdk.AppContext) error {
 The plugin router is the root Chi router — it does **not** inherit Stoa's store middleware. Use `app.Auth.Required` or `app.Auth.OptionalAuth` on your store-facing routes.
 :::
 
+### CSRF and webhooks
+
+Plugin routes follow the same CSRF rules as the rest of Stoa:
+
+- **Admin and store endpoints** (`/plugins/{name}/admin/*`, `/plugins/{name}/store/*`) require the `X-CSRF-Token` header on `POST`, `PUT`, `PATCH`, and `DELETE` requests when the client authenticates via cookie. Clients using an `Authorization` header are exempt.
+- **Webhook endpoints** (`/plugins/{name}/webhooks/*`) are CSRF-exempt. Webhooks authenticate via provider-specific signatures (e.g. Stripe HMAC), not cookies.
+
+Register your webhook handler under the `/webhooks/` sub-path to get the exemption automatically:
+
+```go
+func (p *Plugin) Init(app *sdk.AppContext) error {
+    // Webhook endpoint — CSRF-exempt, authenticated by Stripe HMAC signature.
+    app.Router.Post("/plugins/my-plugin/webhooks/stripe", p.handleStripeWebhook)
+
+    // Admin endpoint — requires X-CSRF-Token (or Authorization header).
+    app.Router.Route("/plugins/my-plugin/admin", func(r chi.Router) {
+        r.Use(app.Auth.Required)
+        r.Get("/settings", p.handleGetSettings)
+    })
+    return nil
+}
+```
+
+::: danger Do not put webhook handlers outside `/webhooks/`
+A webhook handler registered at `/plugins/my-plugin/stripe-hook` (no `webhooks` segment) is **not** CSRF-exempt. Incoming POST requests from payment providers would be rejected with `403 Forbidden` because they carry no `X-CSRF-Token` header.
+:::
+
 ## 4. Self-register via init()
 
 Add an `init()` function that calls `sdk.Register`. Stoa will automatically initialise your plugin on startup — no changes to `app.go` needed:

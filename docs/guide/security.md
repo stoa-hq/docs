@@ -271,7 +271,20 @@ See [Authentication](/api/authentication) for details on JWT access/refresh toke
 
 ## CSRF Protection
 
-Stoa uses the **Double Submit Cookie** pattern. State-changing requests (`POST`, `PUT`, `PATCH`, `DELETE`) must include an `X-CSRF-Token` header matching the `csrf_token` cookie value. Requests with a `Bearer` token in the `Authorization` header are exempt.
+Stoa uses the **Double Submit Cookie** pattern. State-changing requests (`POST`, `PUT`, `PATCH`, `DELETE`) must include an `X-CSRF-Token` header matching the `csrf_token` cookie value.
+
+Two categories of requests are exempt from the CSRF check:
+
+| Category | Reason |
+|----------|--------|
+| Requests with an `Authorization` header (`Bearer` or `ApiKey`) | Cross-origin requests cannot set custom headers, so CSRF is impossible by design. |
+| Plugin webhook paths (`/plugins/{name}/webhooks/*`) | Webhooks authenticate via provider-specific signatures (e.g. Stripe HMAC), not cookies. |
+
+All other plugin routes — `/plugins/{name}/admin/*`, `/plugins/{name}/store/*`, and `/plugins/{name}/assets/*` — require a valid CSRF token like any other cookie-authenticated request.
+
+::: warning Plugin developers
+Only `/plugins/{name}/webhooks/*` paths are CSRF-exempt. If your plugin registers admin or store endpoints under any other path pattern, those endpoints are protected by CSRF and your clients must send the `X-CSRF-Token` header on state-changing requests — unless they authenticate via an `Authorization` header instead.
+:::
 
 ## Password Hashing
 

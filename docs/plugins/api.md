@@ -283,4 +283,17 @@ func (p *Plugin) Init(app *sdk.AppContext) error {
 }
 ```
 
-The router is the same instance used by Stoa core, so middleware (auth, logging, etc.) applies automatically for paths under `/api/v1/admin/*` and `/api/v1/store/*`.
+The router is the same instance used by Stoa core, so global middleware (logging, rate limiting, CSRF) applies to all plugin routes.
+
+### CSRF
+
+Plugin endpoints follow the same CSRF rules as the rest of Stoa:
+
+| Path pattern | CSRF required |
+|---|---|
+| `/plugins/{name}/webhooks/*` | No — exempt (authenticates via provider signature) |
+| `/plugins/{name}/admin/*` | Yes, unless `Authorization` header is present |
+| `/plugins/{name}/store/*` | Yes, unless `Authorization` header is present |
+| `/api/v1/…` (custom API paths) | Yes, unless `Authorization` header is present |
+
+State-changing requests (`POST`, `PUT`, `PATCH`, `DELETE`) from cookie-authenticated clients must include the `X-CSRF-Token` header. See [CSRF Protection](/guide/security#csrf-protection) for details.

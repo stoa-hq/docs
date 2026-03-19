@@ -160,7 +160,46 @@ Extensions are validated at startup. Invalid extensions are skipped with a warni
 - Slot must start with `storefront:` or `admin:`
 - Schema field types must be from the allowed list
 - Web Component tag names must use `stoa-{pluginName}-` prefix
-- URLs must not contain `..` (path traversal) or absolute URLs (`http://`, `https://`)
+- URLs must be relative paths starting with `/` — see [URL validation](#url-validation) below
+
+### URL validation
+
+All URL fields (`ScriptURL`, `StyleURL`, `SubmitURL`, `LoadURL`) are validated using a **whitelist** approach: only relative paths starting with `/` are accepted.
+
+| URL | Result |
+|-----|--------|
+| `/plugins/myplugin/assets/checkout.js` | Allowed |
+| `/api/v1/admin/plugins/myplugin/settings` | Allowed |
+| `javascript:alert(1)` | Rejected — not a relative path |
+| `data:text/html,...` | Rejected — not a relative path |
+| `vbscript:...` | Rejected — not a relative path |
+| `//attacker.com/evil.js` | Rejected — protocol-relative URL |
+| `https://external.com/script.js` | Rejected — absolute URL |
+| `../../../etc/passwd` | Rejected — path traversal |
+
+The implementation checks two conditions:
+
+```go
+func validateURL(u string) error {
+    if u == "" {
+        return nil
+    }
+    if strings.Contains(u, "..") {
+        return fmt.Errorf("path traversal not allowed: %q", u)
+    }
+    if !strings.HasPrefix(u, "/") || strings.HasPrefix(u, "//") {
+        return fmt.Errorf("only relative paths starting with / are allowed: %q", u)
+    }
+    return nil
+}
+```
+
+1. Path traversal (`..`) is blocked explicitly.
+2. The URL must start with `/` but must **not** start with `//`. This single whitelist rule automatically rejects all dangerous schemes (`javascript:`, `data:`, `vbscript:`, `ftp:`, `file:`, `blob:`, etc.) and protocol-relative URLs.
+
+::: warning Plugin developers
+Do not attempt to reference external scripts directly via `ScriptURL` or `StyleURL`. Use the `ExternalScripts` field on `UIComponent` for third-party scripts — those are loaded at runtime by the host page and their domains are added to the CSP `script-src` directive. `ScriptURL` and `StyleURL` must point to assets served from your plugin's own embedded file server at `/plugins/{name}/assets/`.
+:::
 
 ## Security
 
@@ -169,6 +208,7 @@ Extensions are validated at startup. Invalid extensions are skipped with a warni
 - **Scoped API Client** — plugins can only call `/api/v1/store/*`, `/api/v1/admin/*`, and `/plugins/*`
 - **Dynamic CSP** — external scripts from `ExternalScripts` are added to `script-src`, `frame-src`, and `connect-src` in the Content-Security-Policy header
 - **Go-embedded assets** — no user-uploaded scripts, assets are compiled into the binary
+- **Whitelist URL validation** — all URL fields are validated at startup using a whitelist approach; only relative paths starting with `/` are accepted, blocking all dangerous schemes and protocol-relative URLs (see [URL validation](#url-validation))
 
 ## Frontend Integration
 
