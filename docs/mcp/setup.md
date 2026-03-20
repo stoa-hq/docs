@@ -9,6 +9,10 @@ Connect AI agents to your Stoa shop.
 
 ## Create an API Key
 
+The easiest way is through the **Admin Panel**: navigate to **API Keys**, click **New API Key**, and use the **MCP Full Access** preset to grant all permissions. Copy the key immediately — it is shown only once.
+
+Alternatively, create a key via the API:
+
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login \
   -H 'Content-Type: application/json' \
@@ -21,13 +25,16 @@ curl -X POST http://localhost:8080/api/v1/admin/api-keys \
     "name": "MCP Admin Key",
     "permissions": [
       "products.read", "products.create", "products.update", "products.delete",
-      "orders.read", "orders.update",
+      "categories.read", "categories.create", "categories.update", "categories.delete",
+      "customers.read", "customers.create", "customers.update", "customers.delete",
+      "orders.read", "orders.create", "orders.update", "orders.delete",
+      "media.read", "media.create", "media.delete",
       "discounts.read", "discounts.create", "discounts.update", "discounts.delete",
-      "customers.read", "customers.update", "customers.delete",
-      "categories.read", "categories.create", "categories.update",
-      "media.read", "media.delete",
-      "shipping.read", "payment.read", "tax.read",
-      "audit.read"
+      "shipping.read", "shipping.create", "shipping.update", "shipping.delete",
+      "payment.read", "payment.create", "payment.update", "payment.delete",
+      "tax.read", "tax.create", "tax.update", "tax.delete",
+      "settings.read", "settings.update",
+      "plugins.manage", "audit.read", "api_keys.manage"
     ]
   }'
 
@@ -35,6 +42,8 @@ curl -X POST http://localhost:8080/api/v1/admin/api-keys \
 ```
 
 For the Store MCP server, no API key is needed for public endpoints (browsing, cart).
+
+See [API Keys](/api/api-keys) for full details on permissions, security, and management.
 
 ## Build
 
@@ -153,7 +162,64 @@ See [Docker Plugin Installation](/plugins/docker-installation) for details.
 
 ## Use with Claude Code
 
-Add the MCP servers to your Claude Code configuration (`.claude/settings.json` or project settings):
+There are two ways to connect Claude Code to the Stoa MCP servers: via `.mcp.json` (stdio, recommended for local development) or via SSE (for remote/Docker deployments).
+
+### Via .mcp.json (stdio, recommended)
+
+Place a `.mcp.json` file in the Stoa project root. Claude Code detects it automatically and launches the servers as subprocesses using `go run` — no build step required.
+
+```json
+{
+  "mcpServers": {
+    "stoa-admin": {
+      "type": "stdio",
+      "command": "go",
+      "args": ["run", "./cmd/stoa-admin-mcp", "--stdio"],
+      "env": {
+        "STOA_MCP_API_URL": "http://localhost:8080",
+        "STOA_MCP_API_KEY": "${STOA_MCP_API_KEY}"
+      }
+    },
+    "stoa-store": {
+      "type": "stdio",
+      "command": "go",
+      "args": ["run", "./cmd/stoa-store-mcp", "--stdio"],
+      "env": {
+        "STOA_MCP_API_URL": "http://localhost:8080",
+        "STOA_MCP_API_KEY": "${STOA_MCP_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+`${STOA_MCP_API_KEY}` is expanded from your shell environment. Set the variable before starting Claude Code:
+
+```bash
+export STOA_MCP_API_KEY=ck_your_api_key_here
+```
+
+::: tip stdio vs SSE
+The `--stdio` flag switches the server from SSE mode to stdio mode. In stdio mode the server communicates over stdin/stdout — no HTTP port is needed and Claude Code manages the process lifecycle.
+:::
+
+::: warning API key required for admin tools
+The Store MCP server serves public endpoints without authentication (browsing, cart). However, the Admin MCP server requires `STOA_MCP_API_KEY` to be set. If the variable is empty, both servers log a warning on startup and every tool call returns an error immediately — no request is sent to the backend:
+
+```
+WARNING: STOA_MCP_API_KEY is not set — all tool calls will fail with 401
+```
+
+When a tool call is attempted with no key configured, the client returns:
+
+```
+STOA_MCP_API_KEY is not configured — set the environment variable and restart the MCP server
+```
+:::
+
+### Via SSE (remote / Docker)
+
+If the MCP servers are running as separate processes or Docker services, point Claude Code at their SSE endpoints instead:
 
 ```json
 {

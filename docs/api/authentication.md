@@ -138,54 +138,18 @@ The login endpoint implements rate limiting. After too many failed attempts, the
 
 ## API Keys
 
-API keys provide programmatic access for MCP servers, integrations, and scripts. They use the `ApiKey` scheme instead of `Bearer`.
+API keys provide user-bound programmatic access for MCP servers, integrations, and scripts. All staff roles (`super_admin`, `admin`, `manager`) can create and manage their own keys.
 
 ```bash
 curl http://localhost:8080/api/v1/admin/products \
   -H 'Authorization: ApiKey ck_your_api_key_here'
 ```
 
-### Managing API Keys
-
-Only `super_admin` and `admin` roles can create and manage API keys.
-
-```bash
-# Create a new API key
-curl -X POST http://localhost:8080/api/v1/admin/api-keys \
-  -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "name": "My Integration Key",
-    "permissions": ["products.read", "orders.read"]
-  }'
-
-# List all API keys
-curl http://localhost:8080/api/v1/admin/api-keys \
-  -H "Authorization: Bearer $TOKEN"
-
-# Revoke an API key
-curl -X DELETE http://localhost:8080/api/v1/admin/api-keys/{id} \
-  -H "Authorization: Bearer $TOKEN"
-```
-
 ::: tip
 The raw API key is shown only once when created. Store it securely.
 :::
 
-### Available Permissions
-
-| Scope | Permissions |
-|-------|-------------|
-| Products | `products.read`, `products.create`, `products.update`, `products.delete` |
-| Orders | `orders.read`, `orders.update` |
-| Discounts | `discounts.read`, `discounts.create`, `discounts.update`, `discounts.delete` |
-| Customers | `customers.read`, `customers.update`, `customers.delete` |
-| Categories | `categories.read`, `categories.create`, `categories.update` |
-| Media | `media.read`, `media.delete` |
-| Shipping | `shipping.read` |
-| Payment | `payment.read` |
-| Tax | `tax.read` |
-| Audit | `audit.read` |
+For full details on creating, managing, and securing API keys, see [API Keys](/api/api-keys).
 
 ## RBAC Roles
 

@@ -73,6 +73,7 @@ export default defineConfig({
           items: [
             { text: 'Overview', link: '/api/overview' },
             { text: 'Authentication', link: '/api/authentication' },
+            { text: 'API Keys', link: '/api/api-keys' },
             { text: 'Products', link: '/api/products' },
             { text: 'Orders', link: '/api/orders' },
             { text: 'Customers', link: '/api/customers' },
