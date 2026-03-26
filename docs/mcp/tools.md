@@ -8,7 +8,7 @@ Stoa ships two MCP servers: **stoa-admin-mcp** (full admin access) and **stoa-st
 
 | Tool | Description |
 |------|-------------|
-| `admin_list_products` | List products with pagination, search, and filters |
+| `admin_list_products` | List products with pagination, search, and filters. `category_id` filter includes all descendant subcategories recursively. |
 | `admin_get_product` | Get product details including variants and translations |
 | `admin_create_product` | Create a new product |
 | `admin_update_product` | Update an existing product |
@@ -124,6 +124,8 @@ Use the `color_hex` parameter (e.g. `#FF0000`) when creating or updating color o
 ## Store MCP Tools (16)
 
 See [Setup](/mcp/setup) for details on configuring the store MCP server. Store tools are scoped to authenticated customer operations and storefront browsing.
+
+`store_list_products` accepts a `category_id` parameter. Like the REST API, this filter is recursive — passing a parent category ID returns products from that category and all of its descendants. See [Recursive Category Filtering](/api/products#recursive-category-filtering) for details.
 
 ## Conventions
 

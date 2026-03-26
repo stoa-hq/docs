@@ -457,6 +457,27 @@ Same query parameters as [admin list](#list-products), except `filter[active]` i
 
 **Response:** Same format as admin list.
 
+#### Recursive Category Filtering
+
+When `category_id` is provided, the filter uses a recursive SQL query that includes products from the given category **and all of its descendant subcategories** at every depth.
+
+```
+Electronics (id: uuid-electronics)
+├── Laptops (id: uuid-laptops)
+│   └── Gaming Laptops (id: uuid-gaming)
+└── Phones (id: uuid-phones)
+```
+
+```http
+GET /api/v1/store/products?category_id=uuid-electronics
+```
+
+This returns products assigned to **Electronics**, **Laptops**, **Gaming Laptops**, and **Phones** — the entire subtree. Filtering by `uuid-laptops` returns products in **Laptops** and **Gaming Laptops** only.
+
+::: tip
+This behaviour is identical for the admin list endpoint (`GET /api/v1/admin/products?category_id=...`) and the MCP tools `store_list_products` and `admin_list_products`.
+:::
+
 ### Get Product by Slug
 
 ```http

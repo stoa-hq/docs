@@ -46,6 +46,12 @@ The Storefront supports German (`de-DE`) and English (`en-US`) via `svelte-i18n`
 
 Users can switch languages using the globe icon in the header. The selection is persisted in `localStorage`.
 
+## Category Sidebar
+
+The product listing page (`/`) includes a category sidebar that renders the full category tree hierarchically. Top-level categories are shown at the root level; subcategories are indented beneath their parent using proportional padding that increases with each depth level.
+
+Selecting a category filters the product grid and uses [recursive subcategory filtering](/api/products#recursive-category-filtering) — all products assigned to that category or any of its descendants are shown. An "All Products" entry at the top clears the category filter.
+
 ## Account Pages
 
 ### Order History
