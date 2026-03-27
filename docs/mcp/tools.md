@@ -2,7 +2,7 @@
 
 Stoa ships two MCP servers: **stoa-admin-mcp** (full admin access) and **stoa-store-mcp** (storefront operations). Each tool maps to a REST API endpoint.
 
-## Admin MCP Tools (49)
+## Admin MCP Tools (59)
 
 ### Products (8)
 
@@ -52,6 +52,27 @@ Stoa ships two MCP servers: **stoa-admin-mcp** (full admin access) and **stoa-st
 | `admin_get_category` | Get category details |
 | `admin_create_category` | Create a category |
 | `admin_update_category` | Update a category |
+
+### Attributes (10)
+
+Attributes are typed metadata (Brand, Material, Weight) assigned to products or variants. Unlike Property Groups, they do not define purchasable variant configurations. See [Product Attributes](/guide/attributes) for the conceptual overview.
+
+| Tool | Description |
+|------|-------------|
+| `admin_list_attributes` | List all attribute definitions with their options |
+| `admin_get_attribute` | Get a single attribute definition with its options |
+| `admin_create_attribute` | Create a new attribute (type: `text`, `number`, `select`, `multi_select`, `boolean`) |
+| `admin_update_attribute` | Update an attribute definition |
+| `admin_delete_attribute` | Delete an attribute and all its values |
+| `admin_create_attribute_option` | Create an option for a `select` or `multi_select` attribute |
+| `admin_update_attribute_option` | Update an attribute option |
+| `admin_delete_attribute_option` | Delete an attribute option |
+| `admin_set_product_attributes` | Upsert attribute values on a product |
+| `admin_set_variant_attributes` | Upsert attribute values on a product variant |
+
+::: tip Removing a value
+To remove an individual attribute value from a product or variant, use the REST API directly: `DELETE /api/v1/admin/products/{id}/attributes/{attributeId}` (or the variant equivalent). There is no dedicated MCP delete-value tool.
+:::
 
 ### Property Groups (5)
 

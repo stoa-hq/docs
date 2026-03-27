@@ -45,6 +45,7 @@ export default defineConfig({
           items: [
             { text: 'Architecture', link: '/guide/architecture' },
             { text: 'Products & Variants', link: '/guide/products' },
+            { text: 'Product Attributes', link: '/guide/attributes' },
             { text: 'Orders', link: '/guide/orders' },
             { text: 'Customers', link: '/guide/customers' },
             { text: 'Warehouses & Stock', link: '/guide/warehouses' },
@@ -75,6 +76,7 @@ export default defineConfig({
             { text: 'Authentication', link: '/api/authentication' },
             { text: 'API Keys', link: '/api/api-keys' },
             { text: 'Products', link: '/api/products' },
+            { text: 'Attributes', link: '/api/attributes' },
             { text: 'Orders', link: '/api/orders' },
             { text: 'Customers', link: '/api/customers' },
             { text: 'Cart', link: '/api/cart' },
